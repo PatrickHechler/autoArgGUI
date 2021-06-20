@@ -3,11 +3,11 @@ package de.hechler.patrick.hilfen.autoarggui.interfaces;
 
 public interface Arguments {
 	
-	Line[] getAll();
+	Line[] getAllLines();
 	
-	Line get(int indx);
+	Line getLine(int indx);
 	
-	int length();
+	int size();
 	
 	String[] toArgs();
 	

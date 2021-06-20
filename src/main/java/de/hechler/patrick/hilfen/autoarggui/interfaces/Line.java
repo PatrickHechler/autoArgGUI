@@ -1,7 +1,5 @@
 package de.hechler.patrick.hilfen.autoarggui.interfaces;
 
-import java.lang.reflect.Array;
-
 import de.hechler.patrick.hilfen.autoarggui.enums.GUIArt;
 
 public interface Line {
@@ -16,28 +14,59 @@ public interface Line {
 		switch (art(index)) {
 		default:
 			return compatibleText(index)[0];
+		case fileChoose:
 		case showBelowOptionsButton:
+		case ownWindow:
 		case comboBoxFalseTrue:
 		case comboBoxTrueFalse:
 			throw new IllegalStateException("this is no normal element!");
 		}
 	}
 	
-	default String showOptsFirstText(int index) {
+	default String twoValuesFirstText(int index) {
 		switch (art(index)) {
 		default:
-			throw new IllegalStateException("this is no normal element!");
+			throw new IllegalStateException("this is no tow values element!");
+		case fileChoose:
 		case showBelowOptionsButton:
 			return compatibleText(index)[0];
 		}
 	}
 	
-	default String showOptsSecondText(int index) {
+	default String twoValuesSecondText(int index) {
 		switch (art(index)) {
 		default:
-			throw new IllegalStateException("this is no normal element!");
+			throw new IllegalStateException("this is no tow values element!");
+		case fileChoose:
 		case showBelowOptionsButton:
 			return compatibleText(index)[1];
+		}
+	}
+	
+	default String threeValuesFirstText(int index) {
+		switch (art(index)) {
+		default:
+			throw new IllegalStateException("this is no tow values element!");
+		case ownWindow:
+			return compatibleText(index)[0];
+		}
+	}
+	
+	default String threeValuesSecondText(int index) {
+		switch (art(index)) {
+		default:
+			throw new IllegalStateException("this is no tow values element!");
+		case ownWindow:
+			return compatibleText(index)[1];
+		}
+	}
+	
+	default String threeValuesThirdText(int index) {
+		switch (art(index)) {
+		default:
+			throw new IllegalStateException("this is no tow values element!");
+		case ownWindow:
+			return compatibleText(index)[2];
 		}
 	}
 	
@@ -53,26 +82,28 @@ public interface Line {
 	
 	String[] compatibleText(int index);
 	
-	int length();
+	int size();
 	
 	Object getValue(int index);
 	
 	Class <?> getType(int index);
 	
-	default Class <?> getSubType(int index) {
-		return getType(index).getComponentType();
-	}
-	
-	default Object getSubValue(int index, int subIndex, Object val) {
-		Object arr = getValue(subIndex);
-		return Array.get(arr, subIndex);
-	}
-	
 	void setValue(int index, Object val);
 	
-	default void setSubValue(int index, int subIndex, Object val) {
-		Object arr = getValue(subIndex);
-		Array.set(arr, subIndex, val);
+	default void deleteValue(int index) {
+		setValue(index, null);
 	}
+	
+	Line[] subLines(int index);
+	
+	void addLine(int index);
+	
+	void removeAllLines(int index);
+	
+	void removeThisLine();
+	
+	default void initSubLines() {}
+	
+	String[] toArgs();
 	
 }
