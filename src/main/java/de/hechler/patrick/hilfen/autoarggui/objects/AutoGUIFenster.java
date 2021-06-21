@@ -262,12 +262,12 @@ public class AutoGUIFenster {
 							int index = (int) (Integer) all[i].getValue(li);
 							((JComboBox <?>) comp).setSelectedIndex(index);
 						} else if (zwType == Boolean.TYPE) {
-							boolean reverse = arten[li] == GUIArt.comboBoxFalseTrue;
+							boolean reverse = arten[li] == GUIArt.comboBoxTrueFalse;
 							boolean index = (boolean) (Boolean) all[i].getValue(li);
 							index ^= reverse;
 							((JComboBox <?>) comp).setSelectedIndex(index ? 1 : 0);
 						} else if (zwType == Boolean.class) {
-							boolean reverse = arten[li] == GUIArt.comboBoxFalseTrue;
+							boolean reverse = arten[li] == GUIArt.comboBoxTrueFalse;
 							Boolean index = (Boolean) all[i].getValue(li);
 							if (index == null) {
 								((JComboBox <?>) comp).setSelectedIndex(2);
