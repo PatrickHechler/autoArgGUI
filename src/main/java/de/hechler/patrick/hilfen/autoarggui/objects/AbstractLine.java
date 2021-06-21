@@ -22,27 +22,27 @@ public abstract class AbstractLine implements Line {
 	
 	@Override
 	public Line[] subLines(int index) {
-		throw new UnsupportedOperationException("subLines(int)");
+		throw new UnsupportedOperationException("subLines(int) " + getClass().getName());
 	}
 	
 	@Override
 	public void addLine(int index) {
-		throw new UnsupportedOperationException("addLine(int)");
+		throw new UnsupportedOperationException("addLine(int) " + getClass().getName());
 	}
 	
 	@Override
 	public void removeAllLines(int index) {
-		throw new UnsupportedOperationException("removeAllLines(int)");
+		throw new UnsupportedOperationException("removeAllLines(int) " + getClass().getName());
 	}
 	
 	@Override
 	public void removeThisLine() {
-		throw new UnsupportedOperationException("removeThisLine()");
+		throw new UnsupportedOperationException("removeThisLine() " + getClass().getName());
 	}
 	
 	@Override
 	public String[] toArgs() {
-		throw new UnsupportedOperationException("toArgs()");
+		throw new UnsupportedOperationException("toArgs() " + getClass().getName());
 	}
 	
 }

@@ -19,11 +19,6 @@
 			<version>3.0.0-SNAPSHOT</version>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>de.hechler.patrick.hilfen</groupId>
-			<artifactId>fileparser</artifactId>
-			<version>1.1.0</version>
-		</dependency>
 	</dependencies>
 	<build>
 		<plugins>

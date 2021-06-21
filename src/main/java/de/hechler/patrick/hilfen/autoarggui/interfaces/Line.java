@@ -43,30 +43,39 @@ public interface Line {
 		}
 	}
 	
-	default String threeValuesFirstText(int index) {
+	default String fourValuesFirstText(int index) {
 		switch (art(index)) {
 		default:
-			throw new IllegalStateException("this is no tow values element!");
+			throw new IllegalStateException("this is no four values element!");
 		case ownWindow:
 			return compatibleText(index)[0];
 		}
 	}
 	
-	default String threeValuesSecondText(int index) {
+	default String fourValuesSecondText(int index) {
 		switch (art(index)) {
 		default:
-			throw new IllegalStateException("this is no tow values element!");
+			throw new IllegalStateException("this is no four values element!");
 		case ownWindow:
 			return compatibleText(index)[1];
 		}
 	}
 	
-	default String threeValuesThirdText(int index) {
+	default String fourValuesThirdText(int index) {
 		switch (art(index)) {
 		default:
-			throw new IllegalStateException("this is no tow values element!");
+			throw new IllegalStateException("this is no four values element!");
 		case ownWindow:
 			return compatibleText(index)[2];
+		}
+	}
+	
+	default String fourValuesFourthText(int index) {
+		switch (art(index)) {
+		default:
+			throw new IllegalStateException("this is no four values element!");
+		case ownWindow:
+			return compatibleText(index)[3];
 		}
 	}
 	
@@ -83,6 +92,10 @@ public interface Line {
 	String[] compatibleText(int index);
 	
 	int size();
+	
+	default boolean hasValue(int index) {
+		return getValue(index) != null;
+	}
 	
 	Object getValue(int index);
 	

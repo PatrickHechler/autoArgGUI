@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,53 +26,66 @@ import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.filechooser.FileFilter;
 
-import de.hechler.patrick.fileparser.serial.Deserializer;
-import de.hechler.patrick.fileparser.serial.Serializer;
 import de.hechler.patrick.hilfen.autoarggui.enums.GUIArt;
 import de.hechler.patrick.hilfen.autoarggui.interfaces.Arguments;
 import de.hechler.patrick.hilfen.autoarggui.interfaces.Line;
 import de.hechler.patrick.hilfen.autoarggui.interfaces.MainMethod;
+import de.hechler.patrick.serial.Deserializer;
+import de.hechler.patrick.serial.Serializer;
 
 public class AutoGUIFenster {
 	
-	private static final Serializer   SERIALIZER   = new Serializer(false, true, false, true, true);
-	private static final Deserializer DESERIALIZER = new Deserializer(Collections.emptyMap());
+	private static final Serializer   SERIALIZER;
+	private static final Deserializer DESERIALIZER;
 	
-	private final boolean                                isSubWindow;
+	static {
+		SERIALIZER = new Serializer(false, true, true);
+		DESERIALIZER = new Deserializer(Collections.emptyMap());
+	}
+	
+	private final AutoGUIFenster                         superWindow;
 	private final int                                    high;
 	private final int                                    whidh;
 	private final int                                    empty;
 	private MainMethod                                   main;
 	private Arguments                                    args;
 	private Line[]                                       lines;
-	private JFrame                                       frame;
-	private JButton                                      finish;
-	private JButton                                      save;                           /* if subWindow: addNew */
-	private JButton                                      load;                           /* if subWindow: delAll */
-	private JFileChooser                                 normalFC;
-	private JFileChooser                                 argsFC;
+	private Line                                         parentLine;
+	private int                                          parentLineIndex;
+	private final JFrame                                 frame;
+	private final JButton                                finish;
+	private final JButton                                save;                           /* if subWindow: addNew */
+	private final JButton                                load;                           /* if subWindow: delAll */
+	private final JFileChooser                           normalFC;
+	private final JFileChooser                           argsFC;
 	private int                                          shownOptions = 0;
 	private Map <Integer, Map <Integer, AutoGUIFenster>> subWindows   = new HashMap <>();
 	
-	public AutoGUIFenster(MainMethod main, Arguments args) {
-		this(main, args, 20, 250, 10);
+	public AutoGUIFenster(String title, MainMethod main, Arguments args) {
+		this(title, main, args, 20, 500, 10);
 	}
 	
-	public AutoGUIFenster(MainMethod main, Arguments args, int high, int whidh, int empty) {
-		this.isSubWindow = false;
+	public AutoGUIFenster(String title, MainMethod main, Arguments args, int high, int whidh, int empty) {
+		this.superWindow = null;
 		this.high = high;
 		this.whidh = whidh;
 		this.empty = empty;
 		this.main = main;
 		this.args = args;
+		this.frame = new JFrame(title);
+		this.save = new JButton("save");
+		this.load = new JButton("load");
+		this.finish = new JButton("finish");
+		this.normalFC = new JFileChooser();
+		this.argsFC = new JFileChooser();
 	}
 	
-	private AutoGUIFenster(String title, String addNewText, String delAllText, Line[] lines, int high, int whidh, int empty) {
-		this.isSubWindow = true;
+	private AutoGUIFenster(AutoGUIFenster sw, String title, String addNewText, String delAllText, int high, int whidh, int empty) {
+		this.superWindow = sw;
 		this.high = high;
 		this.whidh = whidh;
 		this.empty = empty;
-		this.lines = lines;
+		this.lines = null;
 		this.frame = new JFrame(title);
 		this.save = new JButton(addNewText);
 		this.load = new JButton(delAllText);
@@ -80,26 +94,29 @@ public class AutoGUIFenster {
 		this.argsFC = null;
 	}
 	
-	private AutoGUIFenster subWindowLoad(Line parent, int index) {
+	private AutoGUIFenster subWindowLoad() {
+		frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+		frame.setLayout(null);
 		save.addActionListener(ae -> {
-			
+			parentLine.addLine(parentLineIndex);
+			superWindow.rebuild(false);
 		});
 		frame.add(save);
+		load.addActionListener(ae -> {
+			parentLine.removeAllLines(parentLineIndex);
+			superWindow.rebuild(false);
+		});
 		frame.add(load);
 		return this;
 	}
 	
-	public void load(String title) {
-		load(title, null, null);
+	public void load() {
+		load(null, null);
 	}
 	
-	public void load(String title, String finishMessage, String msgTitle) {
-		frame = new JFrame(title);
-		finish = new JButton();
-		save = new JButton();
-		load = new JButton();
-		normalFC = new JFileChooser();
-		argsFC = new JFileChooser();
+	public void load(String finishMessage, String msgTitle) {
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setLayout(null);
 		FileFilter ff = new FileFilter() {
 			
 			@Override
@@ -145,7 +162,6 @@ public class AutoGUIFenster {
 		};
 		argsFC.addChoosableFileFilter(ff);
 		argsFC.setAcceptAllFileFilterUsed(false);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		finish.addActionListener(ae -> {
 			main.main(args.toArgs());
 			if (finishMessage != null || msgTitle != null) {
@@ -157,7 +173,22 @@ public class AutoGUIFenster {
 			int ret = argsFC.showSaveDialog(frame);
 			if (ret == JFileChooser.APPROVE_OPTION) {
 				try {
-					SERIALIZER.writeObject(new FileOutputStream(argsFC.getSelectedFile()), args);
+					File sf = argsFC.getSelectedFile();
+					if ( !sf.getName().endsWith(".args")) {
+						sf = new File(sf.getParentFile(), sf.getName() + ".args");
+					}
+					if (Files.exists(sf.toPath())) {
+						ret = JOptionPane.showConfirmDialog(frame, "the file (" + sf.getPath() + ") exist already\nshould I overwrite it?", "existing target", JOptionPane.YES_NO_OPTION,
+							JOptionPane.WARNING_MESSAGE);
+						if (ret == JOptionPane.OK_OPTION) {
+							System.out.println("overwirte save file");
+							SERIALIZER.writeObject(new FileOutputStream(sf), args);
+						} else {
+							System.out.println("do'nt overwrite save file ret=" + ret);
+						}
+					} else {
+						SERIALIZER.writeObject(new FileOutputStream(sf), args);
+					}
 				} catch (Exception e) {
 					e.printStackTrace();
 					JOptionPane.showMessageDialog(frame, e.getMessage(), e.getClass().getName(), JOptionPane.ERROR_MESSAGE);
@@ -168,19 +199,27 @@ public class AutoGUIFenster {
 			int ret = argsFC.showOpenDialog(frame);
 			if (ret == JFileChooser.APPROVE_OPTION) {
 				try {
-					args = (Arguments) DESERIALIZER.readObject(new FileInputStream(argsFC.getSelectedFile()));
+					File sf = argsFC.getSelectedFile();
+					if ( !sf.getName().endsWith(".args")) {
+						sf = new File(sf.getParentFile(), sf.getName() + ".args");
+					}
+					args = (Arguments) DESERIALIZER.readObject(new FileInputStream(sf));
+					rebuild(false);
 				} catch (Exception e) {
 					e.printStackTrace();
 					JOptionPane.showMessageDialog(frame, e.getMessage(), e.getClass().getName(), JOptionPane.ERROR_MESSAGE);
 				}
 			}
 		});
-		int xPos = empty, yPos = empty, singleWhidh = whidh - (empty * 3);
+		int xPos = empty, yPos = empty, singleWhidh = (whidh - (empty * 5)) / 3;
 		finish.setBounds(xPos, yPos, singleWhidh, high);
 		xPos += singleWhidh + empty;
 		save.setBounds(xPos, yPos, singleWhidh, high);
 		xPos += singleWhidh + empty;
 		load.setBounds(xPos, yPos, singleWhidh, high);
+		frame.add(finish);
+		frame.add(save);
+		frame.add(load);
 		rebuild(true);
 	}
 	
@@ -192,31 +231,55 @@ public class AutoGUIFenster {
 		}
 		removableComps.clear();
 		int xPos, yPos;
-		if (isSubWindow) {
+		if (superWindow != null) {
 			yPos = empty;
 		} else {
 			yPos = empty + high + empty;
 		}
 		Line[] all;
-		if (isSubWindow) {
+		if (superWindow != null) {
 			all = lines;
 		} else {
 			all = args.getAllLines();
 		}
+		int neededShownOptions = 0;
 		for (int _i = 0; _i < all.length; _i ++ ) {
 			final int i = _i;
 			xPos = empty;
 			GUIArt[] arten = all[i].arten();
-			final int singleWhidh = whidh - (empty * (1 + arten.length));
-			int neededShownOptions = 0;
+			final int singleWhidh = (whidh - (empty * (2 + arten.length))) / arten.length;
+			final int needShownOptionsConst = neededShownOptions;
 			for (int _li = 0; _li < arten.length && neededShownOptions <= shownOptions; _li ++ ) {
-				final int needShownOptionsConst = neededShownOptions;
 				final int li = _li;
 				final Component comp;
 				switch (arten[li]) {
 				case comboBoxFalseTrue:
 				case comboBoxTrueFalse:
 					comp = new JComboBox <>(all[i].comboBoxText(li));
+					if (all[i].hasValue(li)) {
+						Class <?> zwType = all[i].getType(li);
+						if (zwType == Integer.TYPE || zwType == Integer.class) {
+							int index = (int) (Integer) all[i].getValue(li);
+							((JComboBox <?>) comp).setSelectedIndex(index);
+						} else if (zwType == Boolean.TYPE) {
+							boolean reverse = arten[li] == GUIArt.comboBoxFalseTrue;
+							boolean index = (boolean) (Boolean) all[i].getValue(li);
+							index ^= reverse;
+							((JComboBox <?>) comp).setSelectedIndex(index ? 1 : 0);
+						} else if (zwType == Boolean.class) {
+							boolean reverse = arten[li] == GUIArt.comboBoxFalseTrue;
+							Boolean index = (Boolean) all[i].getValue(li);
+							if (index == null) {
+								((JComboBox <?>) comp).setSelectedIndex(2);
+							} else {
+								boolean _index = index.booleanValue() ^ reverse;
+								((JComboBox <?>) comp).setSelectedIndex(_index ? 1 : 0);
+							}
+						} else {
+							Object item = all[i].getValue(li);
+							((JComboBox <?>) comp).setSelectedItem(item);
+						}
+					}
 					comp.addFocusListener(new FocusAdapter() {
 						
 						@Override
@@ -261,12 +324,11 @@ public class AutoGUIFenster {
 					neededShownOptions ++ ;
 					break;
 				case deleteButton:
-					comp = new JButton(all[i].twoValuesFirstText(li));
+					comp = new JButton(all[i].normalText(li));
 					((JButton) comp).addActionListener(ae -> {
 						all[i].deleteValue(li);
 						rebuild(false);
 					});
-					neededShownOptions ++ ;
 					break;
 				case fileChoose:
 					comp = new JButton(all[i].twoValuesFirstText(li));
@@ -282,19 +344,26 @@ public class AutoGUIFenster {
 						}
 						rebuild(false);
 					});
-					neededShownOptions ++ ;
 					break;
 				case number: {
 					comp = new JTextField();
-					final String defaultText = all[i].normalText(li);
-					((JTextField) comp).setText(defaultText);
+					final String text;
+					if (all[i].hasValue(li)) {
+						text = all[i].getValue(li).toString();
+					} else {
+						text = all[i].normalText(li);
+					}
+					((JTextField) comp).setText(text);
 					((JTextField) comp).addFocusListener(new FocusAdapter() {
 						
-						String text = defaultText;
+						String oldText = text;
 						
 						@Override
 						public void focusLost(FocusEvent e) {
 							String newText = ((JTextField) comp).getText();
+							if (oldText.equals(newText)) {
+								return;
+							}
 							Class <?> type = all[i].getType(li);
 							try {
 								if (type == Long.TYPE || type == Long.class) {
@@ -316,10 +385,10 @@ public class AutoGUIFenster {
 								} else {
 									all[i].setValue(li, newText);
 								}
-								text = newText;
+								oldText = newText;
 							} catch (Exception err) {
 								JOptionPane.showMessageDialog(frame, err.getMessage(), err.getClass().getName(), JOptionPane.ERROR_MESSAGE);
-								((JTextField) comp).setText(text);
+								((JTextField) comp).setText(oldText);
 							}
 						}
 						
@@ -329,14 +398,25 @@ public class AutoGUIFenster {
 				case choosenFileModifiable:
 				case modifiableText: {
 					comp = new JTextField();
-					final String defaultText = all[i].normalText(li);
-					((JTextField) comp).setText(defaultText);
+					final String text;
+					if (all[i].hasValue(li)) {
+						text = all[i].getValue(li).toString();
+					} else {
+						text = all[i].normalText(li);
+					}
+					((JTextField) comp).setText(text);
 					((JTextField) comp).addFocusListener(new FocusAdapter() {
+						
+						String oldText = text;
 						
 						@Override
 						public void focusLost(FocusEvent e) {
 							String newText = ((JTextField) comp).getText();
+							if (oldText.equals(newText)) {
+								return;
+							}
 							all[i].setValue(li, newText);
+							oldText = newText;
 						}
 						
 					});
@@ -345,40 +425,58 @@ public class AutoGUIFenster {
 				case choosenFileunmodifiable:
 				case unmodifiableText: {
 					comp = new JTextPane();
-					final String defaultText = all[i].normalText(li);
-					((JTextField) comp).setEditable(false);
-					((JTextField) comp).setText(defaultText);
-					((JTextField) comp).addFocusListener(new FocusAdapter() {
-						
-						@Override
-						public void focusLost(FocusEvent e) {
-							String newText = ((JTextField) comp).getText();
-							all[i].setValue(li, newText);
-						}
-						
-					});
+					final String text = all[i].normalText(li);
+					((JTextPane) comp).setEditable(false);
+					((JTextPane) comp).setText(text);
+					// ((JTextPane) comp).addFocusListener(new FocusAdapter() {
+					//
+					// @Override
+					// public void focusLost(FocusEvent e) {
+					// String newText = ((JTextPane) comp).getText();
+					// all[i].setValue(li, newText);
+					// }
+					//
+					// });
 					break;
 				}
 				case ownWindow: {
-					comp = new JButton(all[i].normalText(li));
+					comp = new JButton(all[i].fourValuesFirstText(li));
 					final AutoGUIFenster sw;
 					Map <Integer, AutoGUIFenster> zw = subWindows.get(i);
+					all[i].initSubLines();
 					if (zw == null) {
 						zw = new HashMap <>();
-						sw = new AutoGUIFenster(all[i].threeValuesFirstText(li), all[i].threeValuesSecondText(li), all[i].threeValuesThirdText(li), all[i].subLines(li), high, whidh, empty)
-							.subWindowLoad(all[i], li);
+						sw = new AutoGUIFenster(superWindow != null ? superWindow : this, all[i].fourValuesSecondText(li), all[i].fourValuesThirdText(li), all[i].fourValuesFourthText(li), high, whidh,
+							empty);
 						zw.put(li, sw);
 						subWindows.put(i, zw);
 					} else {
 						AutoGUIFenster zw0 = zw.get(li);
 						if (zw0 == null) {
-							sw = new AutoGUIFenster(all[i].threeValuesFirstText(li), all[i].threeValuesSecondText(li), all[i].threeValuesThirdText(li), all[i].subLines(li), high, whidh, empty)
-								.subWindowLoad(all[i], li);
+							sw = new AutoGUIFenster(superWindow != null ? superWindow : this, all[i].fourValuesFirstText(li), all[i].fourValuesThirdText(li), all[i].fourValuesFourthText(li), high,
+								whidh, empty);
 						} else {
 							sw = zw0;
 						}
 					}
 					((JButton) comp).addActionListener(ae -> sw.rebuild(true));
+					sw.lines = all[i].subLines(li);
+					if (sw.parentLine == null) {
+						sw.parentLine = all[i];
+						sw.parentLineIndex = li;
+						sw.subWindowLoad();
+					} else if (sw.parentLine != all[i]) {
+						sw.parentLine = all[i];
+						sw.parentLineIndex = li;
+						for (ActionListener al : sw.save.getActionListeners()) {
+							sw.save.removeActionListener(al);
+						}
+						for (ActionListener al : sw.load.getActionListeners()) {
+							sw.save.removeActionListener(al);
+						}
+						sw.subWindowLoad();
+					}
+					sw.rebuild(false);
 					break;
 				}
 				default:
@@ -387,12 +485,13 @@ public class AutoGUIFenster {
 				comp.setBounds(xPos, yPos, singleWhidh, high);
 				frame.add(comp);
 				removableComps.add(comp);
+				xPos += singleWhidh + empty;
 			}
 			yPos += high + empty;
 		}
-		if (isSubWindow) {
+		if (superWindow != null) {
 			xPos = empty;
-			int singleWhidh = whidh - (empty * 3);
+			int singleWhidh = (whidh - (empty * 4)) / 2;
 			save.setBounds(xPos, yPos, singleWhidh, high);
 			xPos += singleWhidh + empty;
 			load.setBounds(xPos, yPos, singleWhidh, high);
