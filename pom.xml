@@ -19,6 +19,11 @@
 			<version>3.0.0-SNAPSHOT</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>de.hechler.patrick.hilfen</groupId>
+			<artifactId>serialobj</artifactId>
+			<version>1.0.0</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
@@ -66,14 +71,14 @@
 
 
 	<repositories>
-<!--		<repository>
+		<repository>
 			<id>patmcsreleases</id>
-			<url>http://patmcs.hechler.de:61269/repository/maven-releases/</url>
+			<url>http://patmcs.hechler.de:8080/repository/maven-releases/</url>
 		</repository>
 		<repository>
 			<id>patmcssnapshots</id>
-			<url>http://patmcs.hechler.de:61269/repository/maven-snapshots/</url>
-		</repository> -->
+			<url>http://patmcs.hechler.de:8080/repository/maven-snapshots/</url>
+		</repository>
 		<repository>
 			<id>central</id>
 			<url>https://repo1.maven.org/maven2/</url>
