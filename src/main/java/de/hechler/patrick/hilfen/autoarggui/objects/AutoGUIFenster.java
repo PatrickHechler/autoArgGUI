@@ -243,13 +243,13 @@ public class AutoGUIFenster {
 			all = args.getAllLines();
 		}
 		int neededShownOptions = 0;
-		for (int _i = 0; _i < all.length; _i ++ ) {
+		for (int _i = 0; _i < all.length && neededShownOptions >= shownOptions; _i ++ ) {
 			final int i = _i;
 			xPos = empty;
 			GUIArt[] arten = all[i].arten();
 			final int singleWhidh = (whidh - (empty * (2 + arten.length))) / arten.length;
 			final int needShownOptionsConst = neededShownOptions;
-			for (int _li = 0; _li < arten.length && neededShownOptions <= shownOptions; _li ++ ) {
+			for (int _li = 0; _li < arten.length; _li ++ ) {
 				final int li = _li;
 				final Component comp;
 				switch (arten[li]) {
@@ -305,18 +305,15 @@ public class AutoGUIFenster {
 					comp = new JButton(all[i].twoValuesFirstText(li));
 					((JButton) comp).addActionListener(new ActionListener() {
 						
-						boolean hide = false;
-						
 						@Override
 						public void actionPerformed(ActionEvent e) {
-							if (hide) {
+							if (shownOptions > needShownOptionsConst) {
 								((JButton) comp).setText(all[i].twoValuesFirstText(li));
 								shownOptions = needShownOptionsConst;
 							} else {
 								((JButton) comp).setText(all[i].twoValuesSecondText(li));
 								shownOptions = needShownOptionsConst + 1;
 							}
-							hide = !hide;
 							rebuild(false);
 						}
 						
