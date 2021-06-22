@@ -6,7 +6,7 @@
 
 	<groupId>de.hechler.patrick.hilfen</groupId>
 	<artifactId>autoarggui</artifactId>
-	<version>1.0.0-SNAPSHOT</version>
+	<version>1.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<properties>
@@ -66,14 +66,14 @@
 
 
 	<repositories>
-		<repository>
+<!--		<repository>
 			<id>patmcsreleases</id>
 			<url>http://patmcs.hechler.de:61269/repository/maven-releases/</url>
 		</repository>
 		<repository>
 			<id>patmcssnapshots</id>
 			<url>http://patmcs.hechler.de:61269/repository/maven-snapshots/</url>
-		</repository>
+		</repository> -->
 		<repository>
 			<id>central</id>
 			<url>https://repo1.maven.org/maven2/</url>
@@ -87,12 +87,12 @@
 		<repository>
 			<id>patmcsreleases</id>
 			<name>PatMCS Maven Repository</name>
-			<url>http://patmcs.hechler.de:61269/repository/maven-releases/</url>
+			<url>http://patmcs.hechler.de:8080/repository/maven-releases/</url>
 		</repository>
 		<snapshotRepository>
 			<id>patmcssnapshots</id>
 			<name>PatMCS Maven Snapshots</name>
-			<url>http://patmcs.hechler.de:61269/repository/maven-snapshots/</url>
+			<url>http://patmcs.hechler.de:8080/repository/maven-snapshots/</url>
 		</snapshotRepository>
 	</distributionManagement>
 
