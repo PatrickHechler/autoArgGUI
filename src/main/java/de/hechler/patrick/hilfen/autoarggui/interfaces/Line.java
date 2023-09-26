@@ -2,6 +2,7 @@ package de.hechler.patrick.hilfen.autoarggui.interfaces;
 
 import de.hechler.patrick.hilfen.autoarggui.enums.GUIArt;
 
+@SuppressWarnings("javadoc")
 public interface Line {
 	
 	default GUIArt art(int index) {
@@ -12,81 +13,72 @@ public interface Line {
 	
 	default String normalText(int index) {
 		switch (art(index)) {
-		default:
-			return compatibleText(index)[0];
 		case fileChoose:
 		case showBelowOptionsButton:
 		case ownWindow:
-		case comboBoxFalseTrue:
-		case comboBoxTrueFalse:
+		case comboBox:
 			throw new IllegalStateException("this is no normal element!");
+		// $CASES-OMITTED$
+		default:
+			return compatibleText(index)[0];
 		}
 	}
 	
 	default String twoValuesFirstText(int index) {
 		switch (art(index)) {
-		default:
-			throw new IllegalStateException("this is no tow values element!");
 		case fileChoose:
 		case showBelowOptionsButton:
 			return compatibleText(index)[0];
+		// $CASES-OMITTED$
+		default:
+			throw new IllegalStateException("this is no tow values element!");
 		}
 	}
 	
 	default String twoValuesSecondText(int index) {
 		switch (art(index)) {
-		default:
-			throw new IllegalStateException("this is no tow values element!");
 		case fileChoose:
 		case showBelowOptionsButton:
 			return compatibleText(index)[1];
+		// $CASES-OMITTED$
+		default:
+			throw new IllegalStateException("this is no tow values element!");
 		}
 	}
 	
 	default String fourValuesFirstText(int index) {
-		switch (art(index)) {
-		default:
+		if (art(index) != GUIArt.ownWindow) {
 			throw new IllegalStateException("this is no four values element!");
-		case ownWindow:
-			return compatibleText(index)[0];
 		}
+		return compatibleText(index)[0];
 	}
 	
 	default String fourValuesSecondText(int index) {
-		switch (art(index)) {
-		default:
+		if (art(index) != GUIArt.ownWindow) {
 			throw new IllegalStateException("this is no four values element!");
-		case ownWindow:
-			return compatibleText(index)[1];
 		}
+		return compatibleText(index)[1];
 	}
 	
 	default String fourValuesThirdText(int index) {
-		switch (art(index)) {
-		default:
+		if (art(index) != GUIArt.ownWindow) {
 			throw new IllegalStateException("this is no four values element!");
-		case ownWindow:
-			return compatibleText(index)[2];
 		}
+		return compatibleText(index)[2];
 	}
 	
 	default String fourValuesFourthText(int index) {
-		switch (art(index)) {
-		default:
+		if (art(index) != GUIArt.ownWindow) {
 			throw new IllegalStateException("this is no four values element!");
-		case ownWindow:
-			return compatibleText(index)[3];
 		}
+		return compatibleText(index)[3];
 	}
 	
 	default String[] comboBoxText(int index) {
-		switch (art(index)) {
-		default:
+		if (art(index) != GUIArt.comboBox) {
 			throw new IllegalStateException("this is no combo box element!");
-		case comboBoxFalseTrue:
-		case comboBoxTrueFalse:
-			return compatibleText(index);
 		}
+		return compatibleText(index);
 	}
 	
 	String[] compatibleText(int index);
@@ -99,7 +91,7 @@ public interface Line {
 	
 	Object getValue(int index);
 	
-	Class <?> getType(int index);
+	Class<?> getType(int index);
 	
 	void setValue(int index, Object val);
 	
