@@ -1,5 +1,6 @@
 package de.hechler.patrick.hilfen.autoarggui.objects;
 
+import de.hechler.patrick.hilfen.autoarggui.interfaces.ArgList;
 import de.hechler.patrick.hilfen.autoarggui.interfaces.Line;
 
 public abstract class AbstractLine implements Line {
@@ -41,8 +42,8 @@ public abstract class AbstractLine implements Line {
 	}
 	
 	@Override
-	public String[] toArgs() {
-		throw new UnsupportedOperationException("toArgs() " + getClass().getName());
+	public void addArgs(ArgList list) { 
+		throw new UnsupportedOperationException("addArgs() " + getClass().getName());
 	}
 	
 }

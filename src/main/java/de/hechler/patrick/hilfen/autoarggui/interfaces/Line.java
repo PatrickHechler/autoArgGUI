@@ -109,6 +109,6 @@ public interface Line {
 	
 	default void initSubLines() {}
 	
-	String[] toArgs();
+	void addArgs(ArgList list);
 	
 }

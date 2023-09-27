@@ -8,7 +8,11 @@ public interface Arguments {
 	Line getLine(int indx);
 	
 	int size();
-	
-	String[] toArgs();
+
+	default String[] toArgs() {
+		return toArgList().toArgs();
+	}
+
+	ArgList toArgList();
 	
 }
