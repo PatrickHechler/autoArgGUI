@@ -7,17 +7,20 @@ import java.awt.Insets;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -35,19 +38,9 @@ import de.hechler.patrick.hilfen.autoarggui.enums.GUIArt;
 import de.hechler.patrick.hilfen.autoarggui.interfaces.Arguments;
 import de.hechler.patrick.hilfen.autoarggui.interfaces.Line;
 import de.hechler.patrick.hilfen.autoarggui.interfaces.MainMethod;
-import de.hechler.patrick.serial.Deserializer;
-import de.hechler.patrick.serial.Serializer;
 
 @SuppressWarnings("javadoc")
 public class AutoArgGUIFrame {
-	
-	private static final Serializer   SERIALIZER;
-	private static final Deserializer DESERIALIZER;
-	
-	static {
-		SERIALIZER   = new Serializer(false, true, true);
-		DESERIALIZER = new Deserializer(Collections.emptyMap());
-	}
 	
 	private final AutoArgGUIFrame                       superWindow;
 	private final int                                   high;
@@ -60,8 +53,8 @@ public class AutoArgGUIFrame {
 	private int                                         parentLineIndex;
 	private final JFrame                                frame;
 	private final JButton                               finish;
-	private final JButton                               save;                          /* if subWindow: addNew */
-	private final JButton                               load;                          /* if subWindow: delAll */
+	private final JButton                               addNew;                          /* if subWindow: addNew */
+	private final JButton                               delAll;                          /* if subWindow: delAll */
 	private final JFileChooser                          normalFC;
 	private final JFileChooser                          argsFC;
 	private int                                         shownOptions = 0;
@@ -79,8 +72,8 @@ public class AutoArgGUIFrame {
 		this.main        = main;
 		this.args        = args;
 		this.frame       = new JFrame(title);
-		this.save        = new JButton("save");
-		this.load        = new JButton("load");
+		this.addNew        = new JButton("save");
+		this.delAll        = new JButton("load");
 		this.finish      = new JButton("finish");
 		this.normalFC    = new JFileChooser();
 		this.argsFC      = new JFileChooser();
@@ -93,8 +86,8 @@ public class AutoArgGUIFrame {
 		this.empty       = empty;
 		this.lines       = null;
 		this.frame       = new JFrame(title);
-		this.save        = new JButton(addNewText);
-		this.load        = new JButton(delAllText);
+		this.addNew        = new JButton(addNewText);
+		this.delAll        = new JButton(delAllText);
 		this.finish      = null;
 		this.normalFC    = new JFileChooser();
 		this.argsFC      = null;
@@ -103,45 +96,40 @@ public class AutoArgGUIFrame {
 	private AutoArgGUIFrame subWindowLoad() {
 		this.frame.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
 		this.frame.setLayout(null);
-		this.save.addActionListener(ae -> {
+		this.addNew.addActionListener(ae -> {
 			this.parentLine.addLine(this.parentLineIndex);
 			this.superWindow.rebuild(false);
 		});
-		this.frame.add(this.save);
-		this.load.addActionListener(ae -> {
+		this.frame.add(this.addNew);
+		this.delAll.addActionListener(ae -> {
 			this.parentLine.removeAllLines(this.parentLineIndex);
 			this.superWindow.rebuild(false);
 		});
-		this.frame.add(this.load);
+		this.frame.add(this.delAll);
 		return this;
 	}
 	
 	public void load() {
-		load(null, null);
+		load((Supplier<String>) null, null);
 	}
 	
 	public void load(String finishMessage, String msgTitle) {
+		load(() -> finishMessage, () -> msgTitle);
+	}
+	public void load(Supplier<String> finishMessage, Supplier<String> msgTitle) {
 		this.frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		this.frame.setLayout(null);
+		@Deprecated
 		FileFilter ff = new FileFilter() {
 			
 			@Override
 			public String getDescription() {
-				return "*.args";
+				return "* [all except for hidden]";
 			}
 			
 			@Override
 			public boolean accept(File f) {
-				if (f.isHidden()) {
-					return false;
-				}
-				if (f.isDirectory()) {
-					return true;
-				}
-				if (f.getName().endsWith(".args")) {
-					return true;
-				}
-				return false;
+				return !f.isHidden();
 			}
 			
 		};
@@ -151,18 +139,12 @@ public class AutoArgGUIFrame {
 			
 			@Override
 			public String getDescription() {
-				return "*.args [ignore hidden flag]";
+				return "* [all]";
 			}
 			
 			@Override
-			public boolean accept(File f) {
-				if (f.isDirectory()) {
-					return true;
-				}
-				if (f.getName().endsWith(".args")) {
-					return true;
-				}
-				return false;
+			public boolean accept(@SuppressWarnings("unused") File f) {
+				return true;
 			}
 			
 		};
@@ -170,30 +152,27 @@ public class AutoArgGUIFrame {
 		this.argsFC.setAcceptAllFileFilterUsed(false);
 		this.finish.addActionListener(ae -> {
 			this.main.main(this.args.toArgs());
-			if (finishMessage != null || msgTitle != null) {
-				JOptionPane.showMessageDialog(this.frame, finishMessage, msgTitle, JOptionPane.INFORMATION_MESSAGE);
+			String fm = finishMessage == null ? null : finishMessage.get();
+			String mt = msgTitle == null ? null : msgTitle.get();
+			if (fm != null || mt != null) {
+				JOptionPane.showMessageDialog(this.frame, fm, mt, JOptionPane.INFORMATION_MESSAGE);
 			}
-			this.frame.setVisible(false);
+			this.frame.dispose();
 		});
-		this.save.addActionListener(ae -> {
+		this.addNew.addActionListener(ae -> {
 			int ret = this.argsFC.showSaveDialog(this.frame);
 			if (ret == JFileChooser.APPROVE_OPTION) {
 				try {
 					File sf = this.argsFC.getSelectedFile();
-					if (!sf.getName().endsWith(".args")) {
-						sf = new File(sf.getParentFile(), sf.getName() + ".args");
-					}
-					if (Files.exists(sf.toPath())) {
+					if (sf.exists()) {
 						ret = JOptionPane.showConfirmDialog(this.frame, "the file (" + sf.getPath() + ") exist already\nshould I overwrite it?", "existing target",
 								JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-						if (ret == JOptionPane.OK_OPTION) {
-							System.out.println("overwirte save file");
-							SERIALIZER.writeObject(new FileOutputStream(sf), this.args);
-						} else {
-							System.out.println("do'nt overwrite save file ret=" + ret);
+						if (ret != JOptionPane.OK_OPTION) {
+							return;
 						}
-					} else {
-						SERIALIZER.writeObject(new FileOutputStream(sf), this.args);
+					}
+					try (ObjectOutputStream out = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(sf)))) {
+						out.writeObject(this.args);
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -201,15 +180,14 @@ public class AutoArgGUIFrame {
 				}
 			}
 		});
-		this.load.addActionListener(ae -> {
+		this.delAll.addActionListener(ae -> {
 			int ret = this.argsFC.showOpenDialog(this.frame);
 			if (ret == JFileChooser.APPROVE_OPTION) {
 				try {
 					File sf = this.argsFC.getSelectedFile();
-					if (!sf.getName().endsWith(".args")) {
-						sf = new File(sf.getParentFile(), sf.getName() + ".args");
+					try (ObjectInputStream in = new ObjectInputStream(new BufferedInputStream(new FileInputStream(sf)))) {
+						this.args = (Arguments) in.readObject();
 					}
-					this.args = (Arguments) DESERIALIZER.readObject(new FileInputStream(sf));
 					rebuild(false);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -219,8 +197,8 @@ public class AutoArgGUIFrame {
 		});
 		positionHeader();
 		this.frame.add(this.finish);
-		this.frame.add(this.save);
-		this.frame.add(this.load);
+		this.frame.add(this.addNew);
+		this.frame.add(this.delAll);
 		rebuild(true);
 	}
 	
@@ -231,9 +209,9 @@ public class AutoArgGUIFrame {
 		int singleWhidh = (this.whidh - (this.empty * 5)) / 3;
 		this.finish.setBounds(xPos, yPos, singleWhidh, this.high);
 		xPos += singleWhidh + this.empty;
-		this.save.setBounds(xPos, yPos, singleWhidh, this.high);
+		this.addNew.setBounds(xPos, yPos, singleWhidh, this.high);
 		xPos += singleWhidh + this.empty;
-		this.load.setBounds(xPos, yPos, singleWhidh, this.high);
+		this.delAll.setBounds(xPos, yPos, singleWhidh, this.high);
 	}
 	
 	private final List<Component> removableComps = new ArrayList<>();
@@ -482,11 +460,11 @@ public class AutoArgGUIFrame {
 					} else if (sw.parentLine != all[i]) {
 						sw.parentLine      = all[i];
 						sw.parentLineIndex = li;
-						for (ActionListener al : sw.save.getActionListeners()) {
-							sw.save.removeActionListener(al);
+						for (ActionListener al : sw.addNew.getActionListeners()) {
+							sw.addNew.removeActionListener(al);
 						}
-						for (ActionListener al : sw.load.getActionListeners()) {
-							sw.save.removeActionListener(al);
+						for (ActionListener al : sw.delAll.getActionListeners()) {
+							sw.addNew.removeActionListener(al);
 						}
 						sw.subWindowLoad();
 					}
@@ -506,9 +484,9 @@ public class AutoArgGUIFrame {
 		if (this.superWindow != null) {
 			xPos = this.empty;
 			int singleWhidh = (this.whidh - (this.empty * 4)) / 2;
-			this.save.setBounds(xPos, yPos, singleWhidh, this.high);
+			this.addNew.setBounds(xPos, yPos, singleWhidh, this.high);
 			xPos += singleWhidh + this.empty;
-			this.load.setBounds(xPos, yPos, singleWhidh, this.high);
+			this.delAll.setBounds(xPos, yPos, singleWhidh, this.high);
 			yPos += this.high + this.empty;
 		}
 		int w = this.whidh;
